@@ -48,14 +48,6 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - name: Install frontend dependencies
-        if: ${{ matrix.enabled }}
-        run: pnpm install
-
-      - name: Build Frontend (Skip Type Check)
-        if: ${{ matrix.enabled }}
-        run: npx vite build
-
       - name: Install Rust stable
         if: ${{ matrix.enabled }}
         uses: dtolnay/rust-toolchain@stable
