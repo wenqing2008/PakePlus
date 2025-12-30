@@ -1,12 +1,12 @@
 {
-    "name": "ChatGPT",
+    "name": "issueclose",
     "version": "0.0.1",
     "description": "TauriMan is a tool for managing TauriMan",
     "author": "TauriMan",
     "license": "MIT",
     "window": {
-        "title": "ChatGPT",
-        "url": "https://chatgpt.com",
+        "title": "issueclose",
+        "url": "index.html",
         "width": 960,
         "height": 720,
         "resizable": true,
