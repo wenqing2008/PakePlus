@@ -1,12 +1,12 @@
 {
-    "name": "ChatGPT",
+    "name": "DevDocs",
     "version": "0.0.1",
     "description": "TauriMan is a tool for managing TauriMan",
     "author": "TauriMan",
     "license": "MIT",
     "window": {
-        "title": "ChatGPT",
-        "url": "https://chatgpt.com",
+        "title": "DevDocs",
+        "url": "https://devdocs.io",
         "width": 960,
         "height": 720,
         "resizable": true,
