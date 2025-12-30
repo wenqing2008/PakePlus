@@ -1,6 +1,6 @@
 {
     "$schema": "https://schema.tauri.app/config/2",
-    "productName": "ChatGPT",
+    "productName": "DevDocs",
     "version": "../package.json",
     "identifier": "com.pakeplus.pacbao",
     "build": {
