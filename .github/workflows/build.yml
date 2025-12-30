@@ -48,6 +48,10 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Install dependencies
+        if: ${{ matrix.enabled }}
+        run: pnpm install --no-frozen-lockfile
+
       - name: Install Rust stable
         if: ${{ matrix.enabled }}
         uses: dtolnay/rust-toolchain@stable
@@ -60,7 +64,7 @@ jobs:
         with:
           tagName: 'PakePlus-v__VERSION__'
           releaseName: 'PakePlus v__VERSION__'
-          body: 'Auto-built by PakePlus Deploy Tool'
+          releaseBody: 'Auto-built by PakePlus Deploy Tool'
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
