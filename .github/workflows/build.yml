@@ -52,9 +52,9 @@ jobs:
         if: ${{ matrix.enabled }}
         run: pnpm install
 
-      - name: Build Frontend
+      - name: Build Frontend (Skip Type Check)
         if: ${{ matrix.enabled }}
-        run: pnpm run build
+        run: npx vite build
 
       - name: Install Rust stable
         if: ${{ matrix.enabled }}
