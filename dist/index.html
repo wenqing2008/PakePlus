@@ -1,22 +1,1596 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="icon" type="image/svg+xml" href="/app.svg" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <script src="/vconsole.min.js"></script>
-        <title>PakePlus</title>
-      <script type="module" crossorigin src="/assets/index-0rL66z1s.js"></script>
-      <link rel="modulepreload" crossorigin href="/assets/vue-D5zJM850.js">
-      <link rel="modulepreload" crossorigin href="/assets/largeLibrary-C-1G2k3o.js">
-      <link rel="modulepreload" crossorigin href="/assets/element-ChwzRr26.js">
-      <link rel="modulepreload" crossorigin href="/assets/pinia-YzwrLR2P.js">
-      <link rel="modulepreload" crossorigin href="/assets/router-wX7hEMOc.js">
-      <link rel="modulepreload" crossorigin href="/assets/codemirror-Buzjj2AI.js">
-      <link rel="stylesheet" crossorigin href="/assets/index-D9kg7XzF.css">
-    </head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>巡视"回头看"问题整改情况</title>
+    <script src="issue_data.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    <body>
-        <div id="app"></div>
-    </body>
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(3px);
+        }
+
+        .modal-content {
+            background: white;
+            width: 800px;
+            max-width: 90%;
+            max-height: 85vh;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f5f7fa;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1a237e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .modal-close:hover { color: #333; }
+
+        .modal-body {
+            padding: 25px;
+            overflow-y: auto;
+        }
+
+        .issue-desc {
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 4px;
+            color: #5d4037;
+            line-height: 1.5;
+        }
+
+        /* Timeline Styles */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 5px;
+            bottom: 5px;
+            width: 2px;
+            background: #e0e0e0;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -30px;
+            top: 5px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 0 1px #e0e0e0;
+            background: #bbb;
+            z-index: 1;
+        }
+
+        .timeline-item.dept .timeline-dot { background: #42a5f5; box-shadow: 0 0 0 1px #42a5f5; }
+        .timeline-item.auditor .timeline-dot { background: #ef5350; box-shadow: 0 0 0 1px #ef5350; }
+        .timeline-item.pass .timeline-dot { background: #66bb6a; box-shadow: 0 0 0 1px #66bb6a; }
+
+        .timeline-content {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .timeline-user { font-weight: bold; color: #333; }
+        .timeline-date { color: #90a4ae; }
+
+        .timeline-body {
+            color: #546e7a;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .timeline-action {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .action-submit { background: #e3f2fd; color: #1565c0; }
+        .action-reject { background: #ffebee; color: #c62828; }
+        .action-pass { background: #e8f5e9; color: #2e7d32; }
+
+        .file-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        .file-link:hover { background: #e0e0e0; }
+        .file-icon { color: #ef5350; } /* PDF red */
+
+        body {
+            font-family: "Microsoft YaHei", "SimHei", Arial, sans-serif;
+            background: #ffffff;
+            padding: 0;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            /* Ensure background prints correctly */
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* Print styles specifically for A3 Landscape */
+        @media print {
+            @page {
+                size: A3 landscape;
+                margin: 0;
+            }
+            
+            body {
+                background: white; /* Or keep gradient if preferred, but usually white for print */
+                margin: 0;
+                padding: 0;
+                width: 420mm; /* A3 Width */
+                height: 297mm; /* A3 Height */
+                display: block; /* Reset flex */
+                overflow: hidden;
+                zoom: 1.05; /* Increased to fill A3 page */
+            }
+
+            .container {
+                width: 100% !important;
+                height: 100vh !important;
+                max-width: none !important;
+                max-height: none !important;
+                margin: 0 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                padding: 8mm 12mm !important; /* Adjusted padding */
+            }
+
+            /* Hide interactive/modal elements */
+            .modal-overlay, #btnEditMode, .modal-btn, .modal-close {
+                display: none !important;
+            }
+            
+            /* Hide scrollbars */
+            ::-webkit-scrollbar {
+                display: none;
+            }
+        }
+
+        .container {
+            width: 1920px; /* Increased from 1800px */
+            max-width: 100%;
+            height: auto;
+            background: #ffffff;
+            border-radius: 0;
+            padding: 20px 30px;
+            box-shadow: none;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2px;
+            flex-shrink: 0;
+            padding-top: 2px;
+        }
+
+        .header h1 {
+            font-size: 28px; /* Increased from 24px */
+            color: #1a237e;
+            font-weight: bold;
+            margin: 0;
+            letter-spacing: 3px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 10px 18px; /* Increased from 8px 15px */
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 3D Visual Effects for Sections */
+        .section-top {
+            background: linear-gradient(180deg, #ffffff 0%, #fcfdfe 100%);
+            border: 1px solid #d1d9e6;
+            box-shadow: 
+                0 4px 10px rgba(0, 0, 0, 0.05),
+                0 1px 3px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 1);
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .section-middle {
+            background: #f0f2f5;
+            border: 1px solid #cfd8dc;
+            box-shadow: 
+                inset 0 3px 8px rgba(0, 0, 0, 0.12),
+                inset 0 1px 3px rgba(0, 0, 0, 0.08),
+                0 1px 0 rgba(255, 255, 255, 0.8);
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-bottom {
+            background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%);
+            border: 1px solid #90caf9;
+            box-shadow: 
+                0 -6px 15px rgba(0, 0, 0, 0.08),
+                0 10px 30px rgba(25, 118, 210, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 1);
+            transform: translateY(-5px);
+            margin-top: 8px;
+            position: relative;
+            z-index: 3;
+        }
+
+        .section:hover {
+            transform: translateY(-2px) scale(1.001);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+        }
+
+        .section-middle:hover {
+            transform: none;
+            box-shadow: 
+                inset 0 4px 10px rgba(0, 0, 0, 0.15),
+                inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-bottom:hover {
+            transform: translateY(-8px) scale(1.002);
+            box-shadow: 
+                0 -8px 20px rgba(0, 0, 0, 0.1),
+                0 15px 40px rgba(25, 118, 210, 0.2);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            padding-left: 8px;
+            border-left: 4px solid #3949ab;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a237e;
+        }
+
+        .section-count {
+            font-size: 16px;
+            color: #ffffff;
+            background: #1976d2;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            box-shadow: 0 2px 4px rgba(25, 118, 210, 0.2);
+            border: 1px solid #1565c0;
+        }
+
+        .section-top .section-count {
+            background: #43a047; /* 绿色表示已上报 */
+            border-color: #2e7d32;
+            box-shadow: 0 2px 4px rgba(67, 160, 71, 0.2);
+        }
+
+        /* Specific section count colors */
+        .section-count-light-orange {
+            background: #ffa726;
+            border-color: #fb8c00;
+            box-shadow: 0 2px 4px rgba(255, 167, 38, 0.2);
+        }
+        .section-count-orange {
+            background: #f57c00;
+            border-color: #e65100;
+            box-shadow: 0 2px 4px rgba(245, 124, 0, 0.2);
+        }
+        .section-count-amber {
+            background: #ff8f00;
+            border-color: #ff6f00;
+            box-shadow: 0 2px 4px rgba(255, 143, 0, 0.2);
+        }
+        .section-count-blue-grey {
+            background: #546e7a;
+            border-color: #37474f;
+            box-shadow: 0 2px 4px rgba(84, 110, 122, 0.2);
+        }
+        .section-count-grey {
+            background: #78909c;
+            border-color: #546e7a;
+            box-shadow: 0 2px 4px rgba(120, 144, 156, 0.2);
+        }
+
+        /* 1. Submitted Section */
+        .submitted-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .batch-card {
+            background: linear-gradient(to bottom, #ffffff, #f1f8e9);
+            border: 1px solid #c5e1a5;
+            border-radius: 12px;
+            padding: 10px 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .batch-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+        }
+
+        .batch-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #a5d6a7;
+            padding-bottom: 8px;
+            margin-bottom: 5px;
+        }
+
+        .batch-date {
+            font-weight: bold;
+            color: #2e7d32;
+            font-size: 18px;
+        }
+
+        .batch-count {
+            font-size: 14px;
+            color: #1b5e20;
+            background: #c8e6c9;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .submitted-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .submitted-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #dcedc8;
+            font-size: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .submitted-dept {
+            color: #455a64;
+            font-size: 14px;
+            font-weight: 600;
+            margin-right: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .submitted-ids {
+            display: flex;
+            gap: 6px;
+        }
+
+        .submitted-id {
+            background: #66bb6a;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        /* Middle Row */
+        .mid-row {
+            display: flex;
+            gap: 15px; /* 增加间距 */
+            flex-shrink: 0;
+        }
+
+        .mid-section {
+            border-radius: 12px;
+            padding: 12px 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Passed Section specific */
+        .passed-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* 两端对齐 */
+            gap: 10px;
+            background: #e0f2f1;
+            border: 1px solid #80cbc4;
+            padding: 8px 12px; /* 稍微紧凑一点的内边距 */
+            border-radius: 8px;
+        }
+        .passed-dept {
+            font-weight: bold;
+            color: #00695c;
+            font-size: 15px;
+            white-space: nowrap; /* 防止换行 */
+        }
+        .passed-ids {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .passed-id {
+            background: #26a69a;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            min-width: 28px;
+            text-align: center;
+        }
+
+        /* Review Section specific */
+        .review-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .review-group {
+            flex: 1;
+            background: #fffde7;
+            border: 1px solid #fff59d;
+            border-radius: 10px;
+            padding: 8px 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .review-group:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.06);
+        }
+
+        .review-group-header {
+            font-size: 15px;
+            font-weight: bold;
+            color: #ef6c00; /* Darker orange for better contrast */
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #fff176;
+            padding-bottom: 4px;
+        }
+
+        .status-badge {
+            font-size: 12px;
+            background: #ffecb3;
+            color: #ff6f00;
+            padding: 2px 6px;
+            border-radius: 6px;
+            border: 1px solid #ffca28;
+            font-weight: 600;
+        }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .tag {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .tag-review { background: #ffca28; color: #3e2723; }
+        .tag-passed { background: #eceff1; color: #455a64; border: 1px solid #cfd8dc; }
+        .tag-delayed { background: #ef5350; color: white; }
+        
+        /* Special styling for ready items */
+        .tag-ready {
+            background: #1976d2;
+            color: white;
+            box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3);
+        }
+
+        /* 4. Remaining Section */
+        .remaining-section {
+            /* flex: 1; Removed to let it shrink */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(to bottom, #ffffff, #fafafa);
+        }
+
+        .remaining-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr); /* Fit 6 cards perfectly */
+            gap: 12px;
+            overflow-y: auto;
+            padding: 5px;
+            /* height: 100%; Removed to fit content */
+        }
+
+        .dept-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .dept-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+            border-color: #b0bec5;
+        }
+
+        .dept-name {
+            font-size: 15px;
+            font-weight: bold;
+            color: #37474f;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #eceff1;
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dept-count-badge {
+            background: #cfd8dc;
+            color: #455a64;
+            font-size: 12px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #b0bec5; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #90a4ae; }
+
+        /* Stats Section */
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            padding: 10px 0;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            padding: 8px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border: 1px solid #e1e4e8;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
+
+        .chart-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            60% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .chart-center {
+            position: absolute;
+            width: 64px;
+            height: 64px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-label {
+            font-size: 20px;
+            color: #546e7a;
+            font-weight: bold;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #263238;
+            line-height: 1.1;
+        }
+        
+        .stat-sub {
+            font-size: 16px;
+            color: #90a4ae;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+
+        /* Clickable tags */
+        .tag, .submitted-id, .passed-id {
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .tag:hover, .submitted-id:hover, .passed-id:hover {
+            transform: scale(1.1);
+            filter: brightness(0.95);
+        }
+
+        /* 3D Visual Effects for Panes - Optimized for Depth */
+        .section-top {
+            /* Top Pane: Slight Convex, Shadow Down */
+            background: linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
+            box-shadow: 0 4px 6px -1px rgba(25, 118, 210, 0.08), 
+                        0 2px 4px -1px rgba(0, 0, 0, 0.05),
+                        inset 0 1px 0 rgba(255, 255, 255, 1);
+            border: 1px solid #e3f2fd;
+            position: relative;
+            z-index: 2;
+            transition: all 0.3s ease;
+        }
+
+        .section-middle {
+            /* Middle Pane: Concave, Shadow In */
+            /* Using darker grey-blue to achieve >15% lightness difference from white */
+            background: linear-gradient(180deg, #f0f4f8 0%, #e0e6ed 100%); 
+            box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.06),
+                        inset 0 2px 4px rgba(0, 0, 0, 0.04),
+                        0 1px 0 rgba(255, 255, 255, 0.6); /* Bottom edge highlight */
+            border: 1px solid #cfd8dc;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s ease;
+        }
+
+        .section-bottom {
+            /* Bottom Pane: Most Obvious Convex, Shadow Up */
+            background: linear-gradient(180deg, #ffffff 0%, #e1f5fe 100%);
+            box-shadow: 0 -4px 12px -2px rgba(0, 0, 0, 0.08), /* Upward shadow */
+                        0 8px 24px -4px rgba(25, 118, 210, 0.12), /* Deep drop shadow */
+                        inset 0 1px 0 rgba(255, 255, 255, 1);
+            border: 1px solid #90caf9;
+            position: relative;
+            z-index: 3;
+            transform: translateY(-3px); /* Visual Lift of 3-5px relative to middle */
+            transition: all 0.3s ease;
+            margin-top: 5px; /* Compensate for visual lift to maintain gap */
+        }
+
+        /* Hover interactions */
+        .section-top:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px -2px rgba(25, 118, 210, 0.12);
+        }
+        .section-bottom:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 -6px 16px -4px rgba(0, 0, 0, 0.1), 0 12px 30px -4px rgba(25, 118, 210, 0.18);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                巡视"回头看"问题整改情况
+                <span id="current-date" style="font-size: 18px; color: #5c6bc0; font-weight: normal; margin-left: 15px; vertical-align: middle;"></span>
+            </h1>
+        </div>
+
+        <div class="stats-row">
+            <!-- 1. 自认整改完成 -->
+            <div class="stat-card">
+                <div class="chart-container" style="background: conic-gradient(#1976d2 0% 76%, #e3f2fd 76% 100%);">
+                    <div class="chart-center">76%</div>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">自认整改完成</span>
+                    <span class="stat-value">39 <span class="stat-sub">/ 51</span></span>
+                </div>
+            </div>
+
+            <!-- 2. 通过内部审核 -->
+            <div class="stat-card">
+                <div class="chart-container" id="total-passed-chart" style="background: conic-gradient(#009688 0% 65%, #e0f2f1 65% 100%);">
+                    <div class="chart-center" id="total-passed-ratio">65%</div>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">累计通过内部审核</span>
+                    <span class="stat-value"><span id="total-passed-val">33</span> <span class="stat-sub">/ 51</span></span>
+                </div>
+            </div>
+
+        <!-- 3. 上报巡视办 -->
+        <div class="stat-card" style="border: 2px solid #43a047; background: #f1f8e9;">
+            <div class="chart-container" style="background: conic-gradient(#43a047 0% 65%, #e8f5e9 65% 100%);">
+                <div class="chart-center">65%</div>
+            </div>
+            <div class="stat-info">
+                <span class="stat-label" style="color: #1b5e20; font-weight: 800;">上报巡视办</span>
+                <span class="stat-value" style="color: #2e7d32; font-size: 28px;">33 <span class="stat-sub">/ 51</span></span>
+            </div>
+        </div>
+        </div>
+
+        <!-- 1. 已提报巡视办 -->
+        <div class="section section-top">
+            <div class="section-header">
+                <div class="section-title">已提报巡视办</div>
+                <div class="section-count">共 33 项</div>
+            </div>
+            <div class="submitted-container">
+                <!-- Batch 1 -->
+                <div class="batch-card">
+                    <div class="batch-header">
+                        <div class="batch-date">第一批 (11月25日)</div>
+                        <div class="batch-count">6项</div>
+                    </div>
+                    <div class="submitted-list">
+                        <div class="submitted-item">
+                            <span class="submitted-dept">科创与数字化部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">4</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">经营管理部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">22</span>
+                                <span class="submitted-id">46</span>
+                                <span class="submitted-id">47</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">人力资源部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">41</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">党群工作部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">44</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Batch 2 -->
+                <div class="batch-card">
+                    <div class="batch-header">
+                        <div class="batch-date">第二批 (11月30日)</div>
+                        <div class="batch-count">4项</div>
+                    </div>
+                    <div class="submitted-list">
+                        <div class="submitted-item">
+                            <span class="submitted-dept">办公室</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">1</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">科创与数字化部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">3</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">海油发展纪委</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">35</span>
+                                <span class="submitted-id">36</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Batch 3 -->
+                <div class="batch-card">
+                    <div class="batch-header">
+                        <div class="batch-date">第三批 (12月7日)</div>
+                        <div class="batch-count">8项</div>
+                    </div>
+                    <div class="submitted-list">
+                        <div class="submitted-item">
+                            <span class="submitted-dept">经营管理部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">5</span>
+                                <span class="submitted-id">8</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">人力资源部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">39</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">财务部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">24</span>
+                                <span class="submitted-id">25</span>
+                                <span class="submitted-id">26</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">办公室</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">37</span>
+                                <span class="submitted-id">43</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Batch 4 -->
+                <div class="batch-card">
+                    <div class="batch-header">
+                        <div class="batch-date">第四批 (12月14日)</div>
+                        <div class="batch-count">10项</div>
+                    </div>
+                    <div class="submitted-list">
+                        <div class="submitted-item">
+                            <span class="submitted-dept">经营管理部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">9</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">工程建设部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">48</span>
+                                <span class="submitted-id">49</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">党群工作部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">31</span>
+                                <span class="submitted-id">45</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">采办共享中心</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">17</span>
+                                <span class="submitted-id">18</span>
+                                <span class="submitted-id">19</span>
+                                <span class="submitted-id">20</span>
+                                <span class="submitted-id">50</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Batch 5 -->
+                <div class="batch-card">
+                    <div class="batch-header">
+                        <div class="batch-date">第五批 (12月22日)</div>
+                        <div class="batch-count">5项</div>
+                    </div>
+                    <div class="submitted-list">
+                        <div class="submitted-item">
+                            <span class="submitted-dept">经营管理部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">7</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">采办共享中心</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">13</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">人力资源部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">33</span>
+                            </div>
+                        </div>
+                        <div class="submitted-item">
+                            <span class="submitted-dept">党群工作部</span>
+                            <div class="submitted-ids">
+                                <span class="submitted-id">34</span>
+                                <span class="submitted-id">38</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mid-row">
+            <!-- 3. 已修订提报再次审核 -->
+            <div class="mid-section section-middle" style="flex: 0.8;">
+                <div class="section-header">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div class="section-title">已修订提报再次审核</div>
+                    </div>
+                    <div class="section-count section-count-light-orange">共 0 项</div>
+                </div>
+                <div class="review-container" style="display: flex; gap: 8px;">
+                    <div style="color: #ff9800; font-size: 14px; padding: 4px 2px; font-weight: 500;">暂无</div>
+                </div>
+            </div>
+
+            <!-- New Section: 根据审核意见修订中 -->
+            <div class="mid-section section-middle" style="flex: 2;">
+                <div class="section-header">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div class="section-title">根据审核意见修订中</div>
+                </div>
+                <div class="section-count section-count-orange">共 4 项</div>
+            </div>
+            <div class="review-container" style="display: flex; gap: 8px;">
+                <div class="review-group" style="background: #fff3e0; border-color: #ffe0b2;">
+                    <div class="review-group-header">
+                        <span style="color: #e65100;">法律合规部</span>
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag tag-review" style="background: #ffcc80; color: #bf360c;">28</span>
+                    </div>
+                </div>
+                <div class="review-group" style="background: #fff3e0; border-color: #ffe0b2;">
+                    <div class="review-group-header">
+                        <span style="color: #e65100;">采办共享中心</span>
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag tag-review" style="background: #ffcc80; color: #bf360c;">16</span>
+                        <span class="tag tag-review" style="background: #ffcc80; color: #bf360c;">21</span>
+                    </div>
+                </div>
+                <div class="review-group" style="background: #fff3e0; border-color: #ffe0b2;">
+                    <div class="review-group-header">
+                        <span style="color: #e65100;">物流公司</span>
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag tag-review" style="background: #ffcc80; color: #bf360c;">11</span>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+            <!-- New Section: 已提报内部审核 -->
+        <div class="mid-section section-middle" style="flex: 0.8;">
+            <div class="section-header">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div class="section-title">已提报内部审核</div>
+                </div>
+                <div class="section-count section-count-amber">共 2 项</div>
+            </div>
+            <div class="review-container" style="display: flex; gap: 8px;">
+                <!-- 规划计划部 -->
+                <div class="review-group" style="background: #fff8e1; border-color: #ffecb3;">
+                    <div class="review-group-header">
+                        <span style="color: #ff8f00;">规划计划部</span>
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag tag-review" style="background: #ffe082; color: #3e2723;">29</span>
+                    </div>
+                </div>
+                <!-- 采办共享中心 -->
+                <div class="review-group" style="background: #fff8e1; border-color: #ffecb3;">
+                    <div class="review-group-header">
+                        <span style="color: #ff8f00;">采办共享中心</span>
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag tag-review" style="background: #ffe082; color: #3e2723;">12</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- 4. 剩余问题 -->
+         
+        <div class="section remaining-section section-bottom">
+            <div class="section-header">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div class="section-title">剩余问题</div>
+                    <div id="ready-legend" style="display: flex; align-items: center; gap: 6px; font-size: 14px; color: #1565c0; background: #e3f2fd; padding: 4px 10px; border-radius: 6px; border: 1px solid #90caf9;">
+                        <span style="width: 10px; height: 10px; background: #1976d2; display: inline-block; border-radius: 2px;"></span>
+                        编制完成，拟下一批提报审核
+                    </div>
+                </div>
+                <div class="section-count section-count-blue-grey">共 12 项</div>
+            </div>
+            <div class="remaining-grid">
+                <!-- 人力资源部 -->
+                <div class="dept-card">
+                    <div class="dept-name">
+                        人力资源部
+                        <span class="dept-count-badge">5</span>
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag tag-passed">10</span>
+                        <span class="tag tag-passed">23</span>
+                        <span class="tag tag-passed">32</span>
+                        <span class="tag tag-passed">40</span>
+                        <span class="tag tag-passed">42</span>
+                    </div>
+                </div>
+
+                <!-- 采办共享中心 -->
+                <div class="dept-card">
+                    <div class="dept-name">
+                        采办共享中心
+                        <span class="dept-count-badge">2</span>
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag tag-passed">14</span>
+                        <span class="tag tag-passed">15</span>
+                    </div>
+                </div>
+
+                <!-- 规划计划部 -->
+                <div class="dept-card">
+                    <div class="dept-name">
+                        规划计划部
+                        <span class="dept-count-badge">2</span>
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag tag-passed">2</span>
+                        <span class="tag tag-passed">6</span>
+                    </div>
+                </div>
+
+                <!-- 财务部 -->
+                <div class="dept-card">
+                    <div class="dept-name">
+                        财务部
+                        <span class="dept-count-badge">1</span>
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag tag-passed">51</span>
+                    </div>
+                </div>
+
+                <!-- 安全生产部 -->
+                <div class="dept-card">
+                    <div class="dept-name">
+                        安全生产部
+                        <span class="dept-count-badge">1</span>
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag tag-passed">27</span>
+                    </div>
+                </div>
+
+                <!-- 物流公司 (所属单位放最后) -->
+                <div class="dept-card">
+                    <div class="dept-name">
+                        物流公司
+                        <span class="dept-count-badge">1</span>
+                    </div>
+                    <div class="tag-list">
+                        <span class="tag tag-passed">30</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Issue Detail Modal -->
+    <div id="issueModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <span>问题 <span id="modalIssueId"></span></span>
+                    <span id="modalDeptBadge" style="font-size: 14px; background: #eee; padding: 2px 8px; border-radius: 4px; color: #666; font-weight: normal;">部门</span>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button id="btnEditMode" class="modal-btn" onclick="toggleEditMode()">✏️ 编辑</button>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <!-- View Mode -->
+                <div id="viewMode">
+                    <div class="issue-desc" id="modalDesc">
+                        问题描述加载中...
+                    </div>
+                    
+                    <div style="font-size: 16px; font-weight: bold; margin-bottom: 20px; color: #333;">整改与审核记录</div>
+                    
+                    <div class="timeline" id="modalTimeline">
+                        <!-- Timeline items will be injected here -->
+                    </div>
+                </div>
+
+                <!-- Edit Mode -->
+                <div id="editMode" style="display: none;">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display:block; font-weight:bold; margin-bottom:5px;">问题描述</label>
+                        <textarea id="editDesc" style="width:100%; height:60px; padding:8px; border:1px solid #ddd; border-radius:4px;"></textarea>
+                    </div>
+
+                    <div style="font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #333;">整改与审核记录</div>
+                    <div id="editTimelineContainer"></div>
+                    
+                    <button onclick="addTimelineItem()" style="margin-top:10px; padding:5px 10px; cursor:pointer; background:#eee; border:1px solid #ccc; border-radius:4px;">+ 添加记录</button>
+
+                    <div style="margin-top: 20px; text-align: right; border-top: 1px solid #eee; padding-top: 15px;">
+                        <button onclick="saveEdit()" style="padding: 8px 15px; background: #009688; color: white; border: none; border-radius: 4px; cursor: pointer;">💾 保存更改</button>
+                        <button onclick="toggleEditMode()" style="padding: 8px 15px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">取消</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .modal-btn { background: none; border: 1px solid #ddd; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .modal-btn:hover { background: #f5f5f5; }
+        .edit-item { background: #f9f9f9; border: 1px solid #eee; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
+        .edit-row { display: flex; gap: 10px; margin-bottom: 5px; }
+        .edit-input { flex: 1; padding: 5px; border: 1px solid #ddd; border-radius: 4px; }
+        .edit-select { padding: 5px; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+
+    <script>
+        // Update total passed count
+        function updateTotalPassed() {
+            // 1. Count submitted items (All Batches)
+            const submittedCount = document.querySelectorAll('.submitted-id').length;
+            
+            // 2. Count passed internal items (in other sections if any)
+            // Currently, all "Passed Internal" items are in "Submitted" section.
+            // If we have items in "Remaining" that are marked as passed but not submitted, we could count them here.
+            // For now, we align with the visual stats which equate "Passed Internal" with "Submitted".
+            const passedInternalCount = 0;
+
+            // 3. Calculate Total
+            const total = submittedCount + passedInternalCount;
+            const totalItems = 51;
+            const ratio = Math.round((total / totalItems) * 100);
+
+            // 4. Update DOM
+            const valEl = document.getElementById('total-passed-val');
+            const ratioEl = document.getElementById('total-passed-ratio');
+            const chartEl = document.getElementById('total-passed-chart');
+
+            if (valEl) valEl.textContent = total;
+            if (ratioEl) ratioEl.textContent = ratio + '%';
+            if (chartEl) {
+                chartEl.style.background = `conic-gradient(#009688 0% ${ratio}%, #e0f2f1 ${ratio}% 100%)`;
+            }
+        }
+
+        // Check for ready items in remaining section and toggle legend
+        function updateReadyLegend() {
+            const remainingSection = document.querySelector('.remaining-section');
+            const legend = document.getElementById('ready-legend');
+            
+            if (remainingSection && legend) {
+                const hasReadyItems = remainingSection.querySelectorAll('.tag-ready').length > 0;
+                legend.style.display = hasReadyItems ? 'flex' : 'none';
+            }
+        }
+
+        // Update current date
+        function updateDate() {
+            const dateEl = document.getElementById('current-date');
+            if (dateEl) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth() + 1;
+                const day = now.getDate();
+                dateEl.textContent = `(截至日期：${year}年${month}月${day}日)`;
+            }
+        }
+
+        // List of available PDFs (IDs)
+        const availablePDFs = [1, 3, 4, 5, 8, 9, 17, 18, 19, 20, 22, 24, 25, 26, 31, 35, 36, 37, 39, 41, 43, 44, 45, 46, 47, 48, 49, 50];
+
+        // Modal Functions
+        let currentIssueId = null;
+        let isEditMode = false;
+
+        function openModal(id) {
+            currentIssueId = id;
+            isEditMode = false;
+            toggleEditMode(false); // Ensure we start in view mode
+
+            const modal = document.getElementById('issueModal');
+            let data = getIssueData(id);
+
+            // If no data exists, create a template structure
+            if (!data) {
+                // If PDF exists, use it as a base
+                if (availablePDFs.includes(parseInt(id))) {
+                    data = {
+                        dept: "未知部门",
+                        desc: "点击编辑补充描述...",
+                        timeline: [
+                            {
+                                date: "2024-01-01",
+                                user: "提报人",
+                                role: "dept",
+                                action: "submit",
+                                comment: "系统自动生成的记录，请点击编辑修改。",
+                                file: `销号单/党组巡视反馈问题整改销号审批单（问题${id}）.pdf`
+                            }
+                        ]
+                    };
+                } else {
+                    data = {
+                        dept: "未知部门",
+                        desc: "暂无描述，请点击编辑添加。",
+                        timeline: []
+                    };
+                }
+            }
+
+            // Populate View Mode
+            document.getElementById('modalIssueId').textContent = id;
+            document.getElementById('modalDeptBadge').textContent = data.dept;
+            document.getElementById('modalDesc').textContent = data.desc;
+
+            const timelineContainer = document.getElementById('modalTimeline');
+            timelineContainer.innerHTML = '';
+
+            if (data.timeline && data.timeline.length > 0) {
+                data.timeline.forEach(item => {
+                    const timelineItem = document.createElement('div');
+                    let typeClass = '';
+                    if (item.role === 'dept') typeClass = 'dept';
+                    else if (item.role === 'auditor') typeClass = 'auditor';
+                    if (item.action === 'pass') typeClass = 'pass';
+                    
+                    timelineItem.className = `timeline-item ${typeClass}`;
+
+                    let actionLabel = '';
+                    let actionClass = '';
+                    if (item.action === 'submit') { actionLabel = '提报销号'; actionClass = 'action-submit'; }
+                    else if (item.action === 'reject') { actionLabel = '退回修改'; actionClass = 'action-reject'; }
+                    else if (item.action === 'pass') { actionLabel = '审核通过'; actionClass = 'action-pass'; }
+
+                    let fileHtml = '';
+                    if (item.file) {
+                        fileHtml = `
+                            <a href="${item.file}" target="_blank" class="file-link">
+                                <span class="file-icon">📄</span> 
+                                ${item.version || '查看附件'}
+                            </a>
+                        `;
+                    }
+
+                    timelineItem.innerHTML = `
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-user">${item.user}</span>
+                                <span class="timeline-date">${item.date}</span>
+                            </div>
+                            <div class="timeline-body">
+                                <span class="timeline-action ${actionClass}">${actionLabel}</span>
+                                <div style="margin-top: 5px;">${item.comment}</div>
+                                ${fileHtml}
+                            </div>
+                        </div>
+                    `;
+                    timelineContainer.appendChild(timelineItem);
+                });
+            } else {
+                timelineContainer.innerHTML = '<div style="color:#999; padding:20px; text-align:center;">暂无记录</div>';
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('issueModal').style.display = 'none';
+            currentIssueId = null;
+        }
+
+        // --- Edit Mode Logic ---
+        function toggleEditMode(forceState) {
+            const viewMode = document.getElementById('viewMode');
+            const editMode = document.getElementById('editMode');
+            const btn = document.getElementById('btnEditMode');
+            
+            if (typeof forceState === 'boolean') {
+                isEditMode = forceState;
+            } else {
+                isEditMode = !isEditMode;
+            }
+
+            if (isEditMode) {
+                viewMode.style.display = 'none';
+                editMode.style.display = 'block';
+                btn.style.display = 'none'; // Hide edit button while editing
+                loadEditForm();
+            } else {
+                viewMode.style.display = 'block';
+                editMode.style.display = 'none';
+                btn.style.display = 'inline-block';
+            }
+        }
+
+        function loadEditForm() {
+            let data = getIssueData(currentIssueId);
+            // If checking a new ID that isn't in issue_data.js yet, use empty structure
+            if (!data) {
+                data = { desc: "", timeline: [] };
+                // Try to guess from existing DOM if possible, or just blank
+            }
+
+            document.getElementById('editDesc').value = data.desc || "";
+            
+            const container = document.getElementById('editTimelineContainer');
+            container.innerHTML = '';
+
+            if (data.timeline) {
+                data.timeline.forEach(item => {
+                    addTimelineItem(item);
+                });
+            }
+        }
+
+        function addTimelineItem(data = {}) {
+            const container = document.getElementById('editTimelineContainer');
+            const div = document.createElement('div');
+            div.className = 'edit-item';
+            div.innerHTML = `
+                <div class="edit-row">
+                    <input type="date" class="edit-input item-date" value="${data.date || new Date().toISOString().split('T')[0]}">
+                    <input type="text" class="edit-input item-user" placeholder="操作人 (如: 工程部)" value="${data.user || ''}">
+                    <select class="edit-select item-role">
+                        <option value="dept" ${data.role === 'dept' ? 'selected' : ''}>部门 (提报方)</option>
+                        <option value="auditor" ${data.role === 'auditor' ? 'selected' : ''}>审核组 (审核方)</option>
+                    </select>
+                    <select class="edit-select item-action">
+                        <option value="submit" ${data.action === 'submit' ? 'selected' : ''}>提报销号</option>
+                        <option value="reject" ${data.action === 'reject' ? 'selected' : ''}>退回修改</option>
+                        <option value="pass" ${data.action === 'pass' ? 'selected' : ''}>审核通过</option>
+                    </select>
+                </div>
+                <div class="edit-row">
+                    <textarea class="edit-input item-comment" placeholder="意见/说明" style="height:50px;">${data.comment || ''}</textarea>
+                </div>
+                <div class="edit-row">
+                    <input type="text" class="edit-input item-file" placeholder="附件路径 (可选)" value="${data.file || ''}">
+                    <input type="text" class="edit-input item-version" placeholder="版本 (如 v1.0)" style="width:80px;" value="${data.version || ''}">
+                    <button onclick="this.parentElement.parentElement.remove()" style="background:#ffdddd; border:1px solid #f88; color:#d00; border-radius:4px; padding:0 10px; cursor:pointer;">删除</button>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        async function saveEdit() {
+            const issueId = currentIssueId;
+            const desc = document.getElementById('editDesc').value;
+            const timelineItems = document.querySelectorAll('.edit-item');
+            
+            const timeline = [];
+            timelineItems.forEach(item => {
+                timeline.push({
+                    date: item.querySelector('.item-date').value,
+                    user: item.querySelector('.item-user').value,
+                    role: item.querySelector('.item-role').value,
+                    action: item.querySelector('.item-action').value,
+                    comment: item.querySelector('.item-comment').value,
+                    file: item.querySelector('.item-file').value,
+                    version: item.querySelector('.item-version').value
+                });
+            });
+
+            const newData = {
+                dept: document.getElementById('modalDeptBadge').textContent, // Keep existing dept for now
+                desc: desc,
+                timeline: timeline
+            };
+
+            // Attempt to save to server
+            try {
+                const response = await fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: issueId, data: newData })
+                });
+
+                if (response.ok) {
+                    alert('保存成功！');
+                    // Update local data for immediate feedback
+                    if (!issueHistoryData[issueId]) issueHistoryData[issueId] = {};
+                    issueHistoryData[issueId] = newData;
+                    
+                    // Refresh view
+                    openModal(issueId);
+                } else {
+                    throw new Error('Server returned ' + response.status);
+                }
+            } catch (e) {
+                console.error(e);
+                // Fallback: Copy to clipboard
+                const code = `    "${issueId}": ${JSON.stringify(newData, null, 4)},`;
+                alert('自动保存失败 (请运行 server.py)。\n\n数据已生成，请点击"确定"复制到剪贴板，然后手动粘贴到 issue_data.js 中。');
+                
+                navigator.clipboard.writeText(code).then(() => {
+                    alert('代码已复制！请打开 issue_data.js 并粘贴。');
+                }).catch(err => {
+                    prompt("复制失败，请手动复制下面的代码:", code);
+                });
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('issueModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+
+        // Make tags clickable to open voucher
+        function makeTagsClickable() {
+            const tags = document.querySelectorAll('.tag, .submitted-id, .passed-id');
+            tags.forEach(tag => {
+                // Ensure it's a number (issue ID)
+                const text = tag.textContent.trim();
+                const id = parseInt(text, 10);
+                
+                if (/^\d+$/.test(text)) {
+                    // ALWAYS allow clicking to open modal (which now supports editing empty items)
+                    tag.style.cursor = 'pointer';
+                    tag.onclick = () => {
+                        openModal(text);
+                    };
+                    
+                    // Update tooltip
+                    const hasHistory = typeof getIssueData === 'function' && getIssueData(text);
+                    if (availablePDFs.includes(id) || hasHistory) {
+                        tag.title = `点击查看/编辑详情 (问题${text})`;
+                    } else {
+                        tag.title = `点击新增记录 (问题${text})`;
+                    }
+                }
+            });
+        }
+
+        // Run on load
+        window.addEventListener('DOMContentLoaded', () => {
+            updateTotalPassed();
+            updateReadyLegend();
+            updateDate();
+            makeTagsClickable();
+        });
+    </script>
+</body>
 </html>
